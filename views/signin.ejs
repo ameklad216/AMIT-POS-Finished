@@ -1,0 +1,80 @@
+<%# صفحة تسجيل الدخول: النموذج يرسل البريد وكلمة المرور وCSRF إلى POST /signin. %>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sign in | AMIT POS</title>
+  <link rel="icon" href="/assets/images/logo/amit-logo.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/assets/css/login.css">
+  <script src="/assets/js/login.js" defer>
+  </script>
+</head>
+<body>
+  <main class="login-page">
+    <section class="login-content" aria-label="AMIT POS sign in">
+      <header class="login-header">
+        <img src="/assets/images/logo/amit-logo.svg" alt="AMIT Logo" height="32">
+        <h1>POS</h1>
+        <p>Sign in to your account</p>
+      </header>
+      <div class="login-card">
+
+        <%# منطق عرض فقط: عرض الأخطاء أو تكرار البيانات التي جهزها السيرفر. %>
+        <% if (errors.length) { %>
+        <div class="login-error" role="alert">
+          <% errors.forEach(error => { %>
+          <p>
+            <%= error %>
+          </p>
+          <% }) %>
+        </div>
+        <% } %>
+
+        <%# النموذج يجمع الحقول؛ action وmethod يحددان المسار المسؤول عن التنفيذ. %>
+        <form method="post" action="/signin" data-login-form>
+
+          <%# رمز حماية مرتبط بالجلسة؛ لا نحذفه من نموذج POST. %>
+          <input type="hidden" name="_csrf" value="<%= csrf %>">
+          <div class="login-field">
+            <label for="email">Email <span>*</span>
+            </label>
+            <div class="input-wrap">
+              <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="2" aria-hidden="true">
+                <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+                <rect x="2" y="4" width="20" height="16" rx="3" />
+              </svg>
+              <input id="email" name="email" type="email" value="<%= email %>"
+                placeholder="admin@test.com" autocomplete="username" required maxlength="255">
+            </div>
+          </div>
+          <div class="login-field">
+            <label for="password">Password <span>*</span>
+            </label>
+            <div class="input-wrap">
+              <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="2" aria-hidden="true">
+                <rect x="4" y="10" width="16" height="12" rx="3" />
+                <path d="M8 10V6a4 4 0 0 1 8 0v4M12 15v2" stroke-linecap="round" />
+              </svg>
+              <input id="password" name="password" type="password" placeholder="Enter your password"
+                autocomplete="current-password" required maxlength="200">
+              <button class="password-toggle" type="button" aria-label="Show password"
+                aria-controls="password" aria-pressed="false">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                  aria-hidden="true">
+                  <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z" />
+                  <circle cx="12" cy="12" r="3" />
+                  <path class="eye-slash" d="m3 3 18 18" />
+                </svg>
+              </button>
+            </div>
+          </div>
+          <button class="sign-in" type="submit">Sign in</button>
+        </form>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

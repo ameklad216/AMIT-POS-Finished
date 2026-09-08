@@ -1,0 +1,29 @@
+<%# البروفايل: user يأتي من الجلسة، ونستخدم إخراج EJS الآمن لعرض البريد والمعرف. %>
+<%- include('partials/head') %>
+<%- include('partials/header') %>
+<div class="page-heading">
+  <h1>My profile</h1>
+  <p>Your account details.</p>
+</div>
+<section class="card profile-card">
+  <span class="avatar large">
+    <%= user.email.charAt(0).toUpperCase() %>
+  </span>
+  <h2>
+    <%= user.email %>
+  </h2>
+  <p>Administrator</p>
+  <dl>
+    <dt>Email address</dt>
+    <dd>
+      <%= user.email %>
+    </dd>
+    <dt>User ID</dt>
+    <dd>#<%= user.id %>
+    </dd>
+    <dt>Access</dt>
+    <dd>Product management</dd>
+  </dl>
+  <a class="button primary" href="/products">Manage Products</a>
+</section>
+<%- include('partials/footer') %>

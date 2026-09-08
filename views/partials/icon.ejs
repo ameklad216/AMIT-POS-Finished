@@ -1,0 +1,23 @@
+<%# اختيار رسم SVG حسب name؛ تضمين هذا الجزء يمنع تكرار تعريفات الأيقونات. %>
+<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+  stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+  <% if(name === 'home') { %>
+  <path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1Z" />
+  <% } else if(name === 'cube') { %>
+  <path d="m12 3 9 5v8l-9 5-9-5V8Zm0 10 9-5M12 13 3 8m9 5v8M7.5 5.5l9 5" />
+  <% } else if(name === 'edit') { %>
+  <path d="m14 5 5 5M4 20l5-1L21 7a2 2 0 0 0-5-5L4 14Zm8 0h9" />
+  <% } else if(name === 'trash') { %>
+  <path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7m4-7v7" />
+  <% } else if(name === 'plus') { %>
+  <path d="M12 5v14M5 12h14" />
+  <% } else if(name === 'menu') { %>
+  <path d="M4 6h16M4 12h16M4 18h16" />
+  <% } else if(name === 'close') { %>
+  <path d="m6 6 12 12M6 18 18 6" />
+  <% } else if(name === 'logout') { %>
+  <path d="M9 4H4v16h5m6-12 4 4-4 4M9 12h10" />
+  <% } else { %>
+  <path d="m6 9 6 6 6-6" />
+  <% } %>
+</svg>

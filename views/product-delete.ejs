@@ -1,0 +1,25 @@
+<%# تأكيد الحذف: GET يعرض الرسالة فقط، وPOST ينفذ الحذف بعد CSRF. %>
+<%- include('partials/head') %>
+<%- include('partials/header') %>
+<section class="card product-panel" data-product-panel>
+  <h2 id="product-panel-title">Delete Product</h2>
+  <p class="panel-description delete-description">Are you sure you want to delete
+    <strong>
+      <%= product.name %>
+    </strong>? This action cannot be undone.
+  </p>
+
+  <%# النموذج يجمع الحقول؛ action وmethod يحددان المسار المسؤول عن التنفيذ. %>
+  <form method="post" action="/products/<%= product.id %>/delete" data-submit-form>
+
+    <%# رمز حماية مرتبط بالجلسة؛ لا نحذفه من نموذج POST. %>
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+
+    <%# الإلغاء يرجع للقائمة، وزر submit يرسل القيم إلى السيرفر. %>
+    <div class="form-actions">
+      <a class="button secondary" href="/products" data-modal-cancel>Cancel</a>
+      <button class="button destructive" type="submit">Delete</button>
+    </div>
+  </form>
+</section>
+<%- include('partials/footer') %>

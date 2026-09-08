@@ -1,0 +1,90 @@
+<%# قائمة المنتجات: السيرفر يرسل products وq، والقالب يحول كل سجل إلى صف HTML. %>
+<%- include('partials/head') %>
+<%- include('partials/header') %>
+<div class="page-heading with-action">
+  <div>
+    <h1>Manage Products</h1>
+    <p>Create, edit, and manage your product catalog.</p>
+  </div>
+  <a class="button destructive" href="/products/new" data-product-modal>
+    <%- include('partials/icon',{name:'plus'}) %>Create Product</a>
+</div>
+<section class="card table-card">
+  <div class="table-heading">
+    <h2>Products <span class="badge">
+        <%= products.length %>
+      </span>
+    </h2>
+    <p>A list of all products in your store.</p>
+  </div>
+  <% if(q) { %>
+  <p class="search-summary">Results for “<%= q %>” <a href="/products">Clear search</a>
+  </p>
+  <% } %>
+  <div class="table-scroll">
+    <table aria-label="Products">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Product Image</th>
+          <th>Product Name</th>
+          <th>Description</th>
+          <th>Product Price</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+
+        <%# منطق عرض فقط: عرض الأخطاء أو تكرار البيانات التي جهزها السيرفر. %>
+        <% products.forEach(product => { %>
+        <tr>
+          <td class="product-id">
+            <%= product.id %>
+          </td>
+          <td>
+            <img class="product-image"
+              src="<%= product.image || '/assets/images/placeholder.svg' %>"
+              alt="<%= product.name %>" referrerpolicy="no-referrer" data-product-image>
+          </td>
+          <td class="product-name">
+            <%= product.name %>
+          </td>
+          <td>
+            <span class="product-description">
+              <%= product.description || '-' %>
+            </span>
+          </td>
+          <td class="price">
+            <%= money(product.price) %>
+          </td>
+          <td>
+            <div class="row-actions">
+              <a class="icon-button" href="/products/<%= product.id %>/edit"
+                aria-label="Edit <%= product.name %>" data-product-modal>
+                <%- include('partials/icon',{name:'edit'}) %>
+              </a>
+              <a class="icon-button delete-action" href="/products/<%= product.id %>/delete"
+                aria-label="Delete <%= product.name %>" data-product-modal>
+                <%- include('partials/icon',{name:'trash'}) %>
+              </a>
+            </div>
+          </td>
+        </tr>
+        <% }) %>
+        <% if(!products.length) { %>
+        <tr>
+          <td colspan="6" class="empty-state">
+            <h2>
+              <%= q ? 'No matching products' : 'No products yet' %>
+            </h2>
+            <p>
+              <%= q ? 'Try another search.' : 'Create your first product to get started.' %>
+            </p>
+          </td>
+        </tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+</section>
+<%- include('partials/footer') %>

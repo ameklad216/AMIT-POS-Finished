@@ -1,0 +1,72 @@
+<%# نموذج واحد للإضافة والتعديل؛ editing يحدد العنوان والمسار، وvalues تحفظ القيم الحالية. %>
+<%- include('partials/head') %>
+<%- include('partials/header') %>
+<section class="card product-panel" data-product-panel>
+  <h2 id="product-panel-title">
+    <%= editing ? 'Edit Product' : 'Create New Product' %>
+  </h2>
+  <p class="panel-description">
+    <%= editing ? 'Update the product details below.' : 'Fill in the details to add a new product.' %>
+  </p>
+
+  <%# النموذج يجمع الحقول؛ action وmethod يحددان المسار المسؤول عن التنفيذ. %>
+  <form method="post" action="<%= editing ? '/products/' + values.id + '/edit' : '/products' %>"
+    data-submit-form>
+
+    <%# رمز حماية مرتبط بالجلسة؛ لا نحذفه من نموذج POST. %>
+    <input type="hidden" name="_csrf" value="<%= csrf %>">
+
+    <%# منطق عرض فقط: عرض الأخطاء أو تكرار البيانات التي جهزها السيرفر. %>
+    <% if(errors.length) { %>
+    <div class="notice danger" role="alert">
+      <ul>
+        <% errors.forEach(error => { %>
+        <li>
+          <%= error %>
+        </li>
+        <% }) %>
+      </ul>
+    </div>
+    <% } %>
+    <div class="form-fields">
+      <div class="field">
+        <label for="name">Product Name <span>*</span>
+        </label>
+        <input id="name" name="name"
+          value="<%= typeof values.name === 'string' ? values.name : '' %>"
+          placeholder="Enter product name" required maxlength="70">
+      </div>
+      <div class="field">
+        <label for="description">Description</label>
+        <textarea id="description"
+          name="description" rows="3" maxlength="5000" placeholder="Enter product description"
+          aria-describedby="description-count"><%= typeof values.description === 'string' ? values.description : '' %></textarea>
+        <small id="description-count" data-description-count>
+          <%= typeof values.description === 'string' ? values.description.length : 0 %>/5000
+          characters</small>
+      </div>
+      <div class="field">
+        <label for="price">Price <span>*</span>
+        </label>
+        <input id="price" name="price" type="number"
+          value="<%= ['string','number'].includes(typeof values.price) ? values.price : '' %>"
+          placeholder="0.00" required min="0" max="9999999999.99" step="0.01">
+      </div>
+      <div class="field">
+        <label for="image">Image URL</label>
+        <input id="image" name="image" type="url"
+          value="<%= typeof values.image === 'string' ? values.image : '' %>"
+          placeholder="https://example.com/image.jpg">
+      </div>
+    </div>
+
+    <%# الإلغاء يرجع للقائمة، وزر submit يرسل القيم إلى السيرفر. %>
+    <div class="form-actions">
+      <a class="button secondary" href="/products" data-modal-cancel>Cancel</a>
+      <button class="button primary" type="submit">
+        <%= editing ? 'Save Changes' : 'Create Product' %>
+      </button>
+    </div>
+  </form>
+</section>
+<%- include('partials/footer') %>

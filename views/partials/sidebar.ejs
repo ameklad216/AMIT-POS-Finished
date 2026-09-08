@@ -1,0 +1,25 @@
+<%# القائمة الجانبية: currentPath يحدد الرابط النشط وأزرار الموبايل تتحكم في ظهورها. %>
+<button class="sidebar-overlay" type="button" aria-label="Close navigation" data-sidebar-close
+  hidden>
+</button>
+<aside class="sidebar" id="sidebar" aria-label="Main navigation">
+  <div class="sidebar-brand">
+    <a class="brand" href="/" aria-label="AMIT POS">
+      <img src="/assets/images/logo/amit-logo.svg" alt="AMIT Logo" height="24">
+      <span>POS</span>
+    </a>
+    <button class="icon-button mobile-menu" type="button" aria-label="Close navigation"
+      data-sidebar-close>
+      <%- include('icon',{name:'close'}) %>
+    </button>
+  </div>
+  <nav>
+    <a class="nav-link <%= currentPath === '/' ? 'active' : '' %>" href="/"
+      <%- currentPath === '/' ? 'aria-current="page"' : '' %>>
+      <%- include('icon',{name:'home'}) %>Dashboard</a>
+    <a class="nav-link <%= currentPath.startsWith('/products') ? 'active' : '' %>" href="/products"
+      <%- currentPath.startsWith('/products') ? 'aria-current="page"' : '' %>>
+      <%- include('icon',{name:'cube'}) %>Manage
+      Products</a>
+  </nav>
+</aside>

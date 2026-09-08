@@ -1,0 +1,44 @@
+<%# التخطيط المشترك: القائمة الجانبية والحساب وبداية main ورسالة flash. %>
+<a class="skip-link" href="#main-content">Skip to content</a>
+<%- include('sidebar') %>
+<div class="workspace">
+  <header class="topbar">
+    <div class="mobile-heading">
+      <button class="icon-button mobile-menu" type="button" aria-label="Toggle navigation"
+        aria-controls="sidebar" aria-expanded="false" data-sidebar-toggle>
+        <%- include('icon',{name:'menu'}) %>
+      </button>
+      <span>
+        <%= currentPath.startsWith('/products') ? 'Manage Products' : title %>
+      </span>
+    </div>
+    <details class="account-menu">
+      <summary>
+        <span class="avatar">
+          <%= user.email.charAt(0).toUpperCase() %>
+        </span>
+        <span class="account-email">
+          <%= user.email %>
+        </span>
+        <%- include('icon',{name:'chevron'}) %>
+      </summary>
+      <div class="account-dropdown">
+        <a href="/profile">My profile</a>
+
+        <%# النموذج يجمع الحقول؛ action وmethod يحددان المسار المسؤول عن التنفيذ. %>
+        <form method="post" action="/logout">
+
+          <%# رمز حماية مرتبط بالجلسة؛ لا نحذفه من نموذج POST. %>
+          <input type="hidden" name="_csrf" value="<%= csrf %>">
+          <button type="submit">
+            <%- include('icon',{name:'logout'}) %>Logout</button>
+        </form>
+      </div>
+    </details>
+  </header>
+  <main id="main-content" class="main-content">
+    <% if(flash) { %>
+    <div class="notice success" role="status">
+      <%= flash %>
+    </div>
+    <% } %>

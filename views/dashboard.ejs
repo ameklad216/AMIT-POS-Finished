@@ -1,0 +1,17 @@
+<%# Dashboard: count يأتي من SELECT count في السيرفر، وليس قيمة ثابتة في الصفحة. %>
+<%- include('partials/head') %>
+<%- include('partials/header') %>
+<div class="page-heading">
+  <h1>Dashboard</h1>
+  <p>Welcome back! Here's an overview of your store.</p>
+</div>
+<section class="card stat-card" aria-label="Product summary">
+  <span class="featured-icon">
+    <%- include('partials/icon',{name:'cube'}) %>
+  </span>
+  <p class="stat-number">
+    <%= count %>
+  </p>
+  <p class="stat-label">Total Products</p>
+</section>
+<%- include('partials/footer') %>
