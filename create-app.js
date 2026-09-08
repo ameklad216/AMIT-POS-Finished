@@ -1,5 +1,6 @@
 // 01 | مكتبات إعداد التطبيق: Express وEJS، والجلسات المخزنة في PostgreSQL، وترويسات الحماية والسجل.
 const express = require('express');
+const ejs = require('ejs');
 const session = require('express-session');
 const PgSession = require('connect-pg-simple')(session);
 const helmet = require('helmet');
@@ -28,6 +29,8 @@ function createApp({
   if (process.env.TRUST_PROXY === '1') app.set('trust proxy', 1);
 
   // 04 | ربط EJS بمجلد views؛ res.render يبحث عن القالب داخل هذا المجلد.
+  // تسجيل EJS صراحةً حتى يضم Vercel المكتبة عند تجهيز ملفات النشر.
+  app.engine('ejs', ejs.renderFile);
   app.set('view engine', 'ejs');
   app.set('views', path.join(__dirname, 'views'));
 

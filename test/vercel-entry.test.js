@@ -9,6 +9,7 @@ test('Vercel entry exports a configured Express handler', () => {
   assert.equal(typeof app, 'function');
   assert.equal(typeof app.handle, 'function');
   assert.equal(app.get('view engine'), 'ejs');
+  assert.equal(app.engines['.ejs'], require('ejs').renderFile);
   assert.ok(app.locals.sessionStore);
   app.locals.sessionStore.close();
 });
