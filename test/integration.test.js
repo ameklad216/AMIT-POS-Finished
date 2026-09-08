@@ -5,7 +5,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { Pool } = require('pg');
-const { createApp } = require('../app');
+const { createApp } = require('../create-app');
 const { databaseConfig } = require('../database');
 
 // تجهيز البيئة المعزولة ثم تشغيل السيناريوهات وتنظيف الموارد في finally.
