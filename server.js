@@ -1,73 +1,386 @@
-// 01 | تحميل .env قبل إنشاء الاتصال حتى يقرأ database.js إعدادات Neon الصحيحة.
-require('dotenv').config({ quiet: true });
-const { createPool } = require('./database');
-const { createApp } = require('./app');
+const express = require('express');
+const session = require('express-session');
+const PgSession = require('connect-pg-simple')(session);
+const helmet = require('helmet');
+const morgan = require('morgan');
+const path = require('node:path');
 
-// مجموعة الاتصال المشتركة التي يستخدمها التطبيق والجلسات.
-const pool = createPool();
+const createRoutes = require('./routes');
+const { csrfToken, csrfProtection } = require('./middleware/auth');
 
-// 02 | بدء التطبيق: تحقق من الجداول أولًا ثم نظّف الجلسات المنتهية واستقبل الطلبات.
-async function start() {
-  await pool.query('SELECT 1 FROM users LIMIT 1');
-  await pool.query('SELECT 1 FROM sessions LIMIT 1');
-  await pool.query('DELETE FROM sessions WHERE expire < NOW()');
-
-  // 03 | إنشاء Express ثم تحديد عنوان الاستماع والمنفذ.
-  const app = createApp({ pool });
-  const host = process.env.APP_HOST || '127.0.0.1';
-  const port = Number(process.env.APP_PORT || 3100);
-
-  // بدء استقبال HTTP؛ callback يطبع العنوان بعد نجاح فتح المنفذ.
-  const server = app.listen(port, host, () =>
-    console.log(`EJS Admin Dashboard: http://${host}:${port}`),
-  );
-
-  // 04 | مهمة دورية كل 15 دقيقة لحذف الجلسات المنتهية؛ catch يمنع رفض Promise غير معالج.
-  const prune = setInterval(
-    () =>
-      pool
-        .query('DELETE FROM sessions WHERE expire < NOW()')
-        .catch((error) => console.error(error.message)),
-    15 * 60 * 1000,
-  );
-
-  // المؤقت وحده لا يمنع انتهاء عملية Node عند إغلاق بقية الموارد.
-  prune.unref();
-  let stopping = false;
-
-  // 05 | إغلاق منظم: امنع تكرار الإيقاف ثم أغلق HTTP ومخزن الجلسات واتصالات قاعدة البيانات.
-  function stop() {
-    if (stopping) return;
-    stopping = true;
-    clearInterval(prune);
-
-    // انتظار انتهاء الطلبات المفتوحة قبل إغلاق موارد التطبيق.
-    server.close(async () => {
-      app.locals.sessionStore.close();
-      await pool.end();
-      process.exit(0);
-    });
+function createApp({
+  pool,
+  secret = process.env.SESSION_SECRET,
+  production =
+    process.env.VERCEL === '1' ||
+    process.env.NODE_ENV === 'production',
+  sessionSchema = 'public',
+  logging = true,
+} = {}) {
+  /*
+   * لا نستخدم fallback secret في Production لأن تغيير الـ secret
+   * بين Serverless instances سيكسر الـ sessions.
+   */
+  if (!secret || secret.length < 32) {
+    throw new Error(
+      'SESSION_SECRET must contain at least 32 characters.'
+    );
   }
 
-  // ربط الإغلاق بإشارات Ctrl+C وإيقاف العملية.
-  process.on('SIGINT', stop);
-  process.on('SIGTERM', stop);
+  if (!pool) {
+    throw new Error('A PostgreSQL pool is required.');
+  }
 
-  // التعامل مع خطأ الاستماع مثل انشغال المنفذ وإغلاق الاتصال عند الفشل.
-  server.on('error', async (error) => {
-    console.error(error.message);
-    await pool.end();
-    process.exitCode = 1;
+  const app = express();
+
+  // -----------------------------------------------------
+  // Express
+  // -----------------------------------------------------
+
+  app.disable('x-powered-by');
+
+  /*
+   * Vercel يعمل خلف Reverse Proxy.
+   * محلياً لن يتم تفعيله إلا لو طلبت ذلك صراحة.
+   */
+  if (
+    process.env.VERCEL === '1' ||
+    process.env.TRUST_PROXY === '1'
+  ) {
+    app.set('trust proxy', 1);
+  }
+
+  // -----------------------------------------------------
+  // EJS
+  // -----------------------------------------------------
+
+  app.set('view engine', 'ejs');
+  app.set('views', path.join(__dirname, 'views'));
+
+  // -----------------------------------------------------
+  // Helmet
+  // -----------------------------------------------------
+
+  const contentSecurityPolicy = {
+    defaultSrc: ["'self'"],
+    scriptSrc: ["'self'"],
+    styleSrc: ["'self'"],
+    imgSrc: [
+      "'self'",
+      'https:',
+      'http:',
+      'data:',
+    ],
+  };
+
+  /*
+   * في Production نسمح لـ Helmet بإضافة
+   * upgrade-insecure-requests.
+   *
+   * محلياً نحذفها حتى لا يحاول المتصفح تحويل
+   * localhost من HTTP إلى HTTPS.
+   */
+  if (!production) {
+    contentSecurityPolicy.upgradeInsecureRequests = null;
+  }
+
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        directives: contentSecurityPolicy,
+      },
+    })
+  );
+
+  // -----------------------------------------------------
+  // Static files
+  // -----------------------------------------------------
+
+  app.use(
+    '/assets',
+    express.static(
+      path.join(__dirname, 'public'),
+      {
+        maxAge: production ? '1d' : 0,
+      }
+    )
+  );
+
+  // -----------------------------------------------------
+  // Logging
+  // -----------------------------------------------------
+
+  if (logging) {
+    app.use(morgan('dev'));
+  }
+
+  // -----------------------------------------------------
+  // Form body
+  // -----------------------------------------------------
+
+  app.use(
+    express.urlencoded({
+      extended: false,
+      limit: '32kb',
+    })
+  );
+
+  // -----------------------------------------------------
+  // PostgreSQL Session Store
+  // -----------------------------------------------------
+
+  const store = new PgSession({
+    pool,
+
+    schemaName: sessionSchema,
+
+    tableName: 'sessions',
+
+    /*
+     * دي أهم إضافة هنا.
+     *
+     * لو جدول sessions مش موجود في PostgreSQL
+     * التطبيق مش هيفشل عند أول Session request.
+     */
+    createTableIfMissing: true,
+
+    /*
+     * مناسب أكثر للـ Serverless.
+     * لا ننشئ Timer دائم لتنظيف الـ sessions.
+     */
+    pruneSessionInterval: false,
   });
+
+  store.on('error', (error) => {
+    console.error(
+      '[SESSION STORE ERROR]',
+      error
+    );
+  });
+
+  // -----------------------------------------------------
+  // Session
+  // -----------------------------------------------------
+
+  app.use(
+    session({
+      name: 'admin_ejs.sid',
+
+      secret,
+
+      store,
+
+      resave: false,
+
+      saveUninitialized: false,
+
+      rolling: true,
+
+      cookie: {
+        httpOnly: true,
+
+        sameSite: 'lax',
+
+        /*
+         * Local:
+         * http://localhost → false
+         *
+         * Vercel:
+         * https://...vercel.app → true
+         */
+        secure: production,
+
+        maxAge: 8 * 60 * 60 * 1000,
+      },
+    })
+  );
+
+  // -----------------------------------------------------
+  // Template locals
+  // -----------------------------------------------------
+
+  app.use((req, res, next) => {
+    res.setHeader(
+      'Cache-Control',
+      'no-store, no-cache, must-revalidate, private'
+    );
+
+    res.locals.user =
+      req.session?.user || null;
+
+    res.locals.currentPath = req.path;
+
+    res.locals.flash =
+      req.session?.flash || null;
+
+    if (req.session?.flash) {
+      delete req.session.flash;
+    }
+
+    try {
+      res.locals.csrf = csrfToken(req);
+    } catch (error) {
+      return next(error);
+    }
+
+    res.locals.money = (value) => {
+      const number = Number(value);
+
+      return new Intl.NumberFormat(
+        'en-US',
+        {
+          style: 'currency',
+          currency: 'USD',
+        }
+      ).format(
+        Number.isFinite(number)
+          ? number
+          : 0
+      );
+    };
+
+    next();
+  });
+
+  // -----------------------------------------------------
+  // CSRF
+  // -----------------------------------------------------
+
+  app.use(csrfProtection);
+
+  // -----------------------------------------------------
+  // Routes
+  // -----------------------------------------------------
+
+  app.use(createRoutes(pool));
+
+  // -----------------------------------------------------
+  // 404
+  // -----------------------------------------------------
+
+  app.use((req, res) => {
+    res.status(404).render('error', {
+      title: 'Page not found',
+      status: 404,
+      message:
+        'The page you requested does not exist.',
+
+      user:
+        res.locals.user || null,
+
+      csrf:
+        res.locals.csrf || '',
+
+      currentPath:
+        req.path,
+
+      flash: null,
+    });
+  });
+
+  // -----------------------------------------------------
+  // Error handler
+  // -----------------------------------------------------
+
+  app.use(
+    (error, req, res, next) => {
+      if (res.headersSent) {
+        return next(error);
+      }
+
+      /*
+       * اطبع الـ stack بالكامل على Vercel
+       * بدل error.message فقط.
+       *
+       * دي مهمة جداً لمعرفة الخطأ الحقيقي
+       * من Runtime Logs.
+       */
+      console.error(
+        '[APPLICATION ERROR]',
+        error
+      );
+
+      let status = 500;
+
+      if (
+        error.type ===
+        'entity.too.large'
+      ) {
+        status = 413;
+      } else if (
+        Number.isInteger(error.status) &&
+        error.status >= 400 &&
+        error.status <= 599
+      ) {
+        status = error.status;
+      }
+
+      const message =
+        status === 413
+          ? 'Request body too large.'
+          : 'The request could not be completed. Please try again.';
+
+      /*
+       * لو error.ejs نفسه فيه مشكلة
+       * مانخليش الـ Function تقع مرة ثانية.
+       */
+      res.status(status);
+
+      res.render(
+        'error',
+        {
+          title: 'Request failed',
+
+          status,
+
+          message,
+
+          user:
+            res.locals.user || null,
+
+          csrf:
+            res.locals.csrf || '',
+
+          currentPath:
+            req.path,
+
+          flash: null,
+        },
+        (renderError, html) => {
+          if (renderError) {
+            console.error(
+              '[ERROR PAGE RENDER ERROR]',
+              renderError
+            );
+
+            return res
+              .type('html')
+              .send(`
+                <!DOCTYPE html>
+                <html>
+                  <head>
+                    <meta charset="UTF-8">
+                    <title>Request failed</title>
+                  </head>
+                  <body>
+                    <h1>${status}</h1>
+                    <p>${message}</p>
+                  </body>
+                </html>
+              `);
+          }
+
+          return res.send(html);
+        }
+      );
+    }
+  );
+
+  app.locals.sessionStore = store;
+
+  return app;
 }
 
-// 06 | نقطة التشغيل الفعلية ومعالجة فشل التهيئة قبل استقبال الطلبات.
-start().catch(async (error) => {
-  console.error(
-    'Startup failed:',
-    error.message,
-    '\nCheck .env and run npm run db:init.',
-  );
-  await pool.end();
-  process.exitCode = 1;
-});
+module.exports = {
+  createApp,
+};
